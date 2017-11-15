@@ -54,11 +54,12 @@ public aspect AspectMove{
 				}			 
 				break;
 				
-			case "Queen":
-				if (/*comportement Rook TODO*/) {
+			/*case "Queen":
+				if (//comportement Rook TODO/) {
 					return isBlockedByPiece("Rook",move);
 					//TODO
-				} 
+				}
+				*/
 				
 		}
 		
