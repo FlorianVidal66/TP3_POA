@@ -1,0 +1,6 @@
+--------------------------------------
+          Log of the moves
+--------------------------------------
+
+  Player Black moved c from b7 to c5
+  Player White moved P from c1 to c2

@@ -119,6 +119,19 @@ public aspect AspectMove{
 		}
 	}
 	
+	private int distanceOfMove(Move move) {
+		int distanceX = getDistanceX(move);
+		int distanceY = getDistanceY(move);
+		return distanceX + distanceY;
+	}
+	
+	private int getDistanceX(Move move) {
+		return Math.abs(move.xI - move.xF);
+	}
+	
+	private int getDistanceY(Move move) {
+		return Math.abs(move.yI - move.yF);
+	}
 	
 	/**
      * Create the log.txt file or overwrite
@@ -216,8 +229,13 @@ public aspect AspectMove{
 											 && args(move)
 											 && call(boolean isMoveLegal(Move))
 	{
-		//TODO King
-		return false;
+		int color = piece.getPlayer();
+		if( (isPossibleToMoveColor(color,spotF) && (distanceOfMove(move) == 1 || (distanceOfMove(move) == 2 && getDistanceX(move) == 1 && getDistanceY(move) == 1))) )
+		{
+			return true;
+		} else {
+			return false;
+		}
 	}
 	
 	
@@ -228,8 +246,13 @@ public aspect AspectMove{
 	 									   && args(move)
 	 									   && call(boolean isMoveLegal(Move))
 	{
-		//TODO Knight
-		return false;
+		int color = piece.getPlayer();
+		if( (isPossibleToMoveColor(color,spotF) && (distanceOfMove(move) == 3 && ((getDistanceX(move) == 1 && getDistanceY(move) == 2) || (getDistanceX(move) == 2 && getDistanceY(move) == 1)))) )
+		{
+			return true;
+		} else {
+			return false;
+		}
 	}
 	
 	
