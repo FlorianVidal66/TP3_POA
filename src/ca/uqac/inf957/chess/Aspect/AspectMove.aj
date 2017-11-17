@@ -1,10 +1,15 @@
 package ca.uqac.inf957.chess.Aspect;
 
+import ca.uqac.inf957.chess.Game;
 import ca.uqac.inf957.chess.Spot;
 import ca.uqac.inf957.chess.agent.Player;
 import ca.uqac.inf957.chess.agent.Move;
 import ca.uqac.inf957.chess.piece.*;
 import ca.uqac.inf957.chess.Board;
+import java.io.File;
+import java.io.PrintWriter;
+import java.io.FileWriter;
+import java.io.IOException;
 
 public aspect AspectMove{
 	
@@ -13,6 +18,16 @@ public aspect AspectMove{
 	private Spot     spotF;
 	private Spot     spotI;
 	
+	
+	
+	/**
+	 *  Check if a spot is occupied by an enemy piece
+	 *  
+	 *  @param color The color of the current player
+	 *  @param Spot  The spot where the check should be done
+	 *  
+	 *  @return True if the spot is occupied by the enemy else false
+	 */
 	private boolean isOccupiedByEnemy(int color, Spot spot) {
 		if (spot.getPiece() == null) {
 			return false;
@@ -20,6 +35,7 @@ public aspect AspectMove{
 			return color != spot.getPiece().getPlayer();
 		}
 	}
+	
 	
 	/**
 	 * @param color color of the player
@@ -36,8 +52,31 @@ public aspect AspectMove{
 	}
 	
 	
+	/**
+	 * Check if a movement is diagonal
+	 * 
+	 * @param move Movement of the piece
+	 * 
+	 * @return True if the movement is diagonal else false
+	 */
+	private boolean isMoveDiagonal(Move move) {
+		// A movement is diagonal if the shift vertically and horizontally is the same in absolute value
+		return (Math.abs(move.xI - move.xF) == Math.abs(move.yI - move.yF));
+	}
+	
+	
+	
+	/**
+	 *  Check if a piece is in between the initial and final position of the move
+	 *  
+	 *  @param piece The name of the moving piece
+	 *  @param move  The move of the piece
+	 *  
+	 *  @return True if a piece is in between else false
+	 */
 	private boolean isBlockedByPiece(String piece, Move move) {
 		switch(piece) {
+		
 			case "Rook":
 				if (move.xI == move.xF) {
 					for (int i = Math.min(move.yI, move.yF)+1; i < Math.max(move.yI, move.yF); i++) {
@@ -54,26 +93,51 @@ public aspect AspectMove{
 				}			 
 				break;
 				
-			/*case "Queen":
-				if (//comportement Rook TODO/) {
-					return isBlockedByPiece("Rook",move);
-					//TODO
-				}
-				*/
-				
-		}
-		
-		
-		
+			case "Bishop":
+				int shiftX = move.xF - move.xI;
+				int shiftY = move.yF - move.yI;				
+				for (int shift = 1; shift < Math.abs(shiftX); shift++) {
+					if(grid[move.xI + shift*(shiftX/Math.abs(shiftX))][move.yI + shift*(shiftY/Math.abs(shiftY))].isOccupied()) {
+						return true;
+					}
+				}		
+				break;	
+		}		
 		return false;
 	}
 	
 	
 	
+	private void writeInLog(String message) {
+		File log = new File("log.txt");
+		try{
+			PrintWriter out = new PrintWriter(new FileWriter(log, true));
+			out.println(message);
+			out.close();
+		}catch(IOException e){
+		    System.out.println("Error in writting");
+		}
+	}
 	
 	
-	
-	
+	/**
+     * Create the log.txt file or overwrite
+	 */
+	void around(Game game): target(game) && call(void play())
+	{
+		File log = new File("log.txt");
+		try{
+			PrintWriter out = new PrintWriter(log);
+			out.println("--------------------------------------");
+			out.println("          Log of the moves");
+			out.println("--------------------------------------");
+			out.println("");
+			out.close();
+		}catch(IOException e){
+		    System.out.println("Error in creating txt file");
+		}
+		proceed(game);
+	}
 	
 	
 	
@@ -100,6 +164,7 @@ public aspect AspectMove{
 				if (color == piece.getPlayer() && piece.isMoveLegal(move)) {
 					
 					board.movePiece(move);
+					writeInLog("  Player " + player.getColorName() + " moved " + piece.toString() + " from " + move.toString().substring(0,2) + " to " + move.toString().substring(2));
 					return true;	
 				} 	
 			}
@@ -118,7 +183,7 @@ public aspect AspectMove{
 		// Black Pawn can only move with descendant row and White with ascendant if they can't eat a piece
 		int color = piece.getPlayer();
 		if( ((move.xI == move.xF) && ((color == 0 && move.yI == move.yF+1) || (color == 1 && move.yI+1 == move.yF)) && !spotF.isOccupied()) || // Straight line case, can't eat
-			(move.xI == move.xF +1 || move.xI == move.xF-1) && ((color == 0 && move.yI == move.yF+1) || (color == 1 && move.yI+1 == move.yF)) && isOccupiedByEnemy(color,spotF)){ // Case eat
+			(move.xI == move.xF +1 || move.xI == move.xF-1) && ((color == 0 && move.yI == move.yF+1) || (color == 1 && move.yI+1 == move.yF)) && isOccupiedByEnemy(color,spotF)){ // Case can eat
 			return true;
 		}
 		return false;
@@ -132,8 +197,15 @@ public aspect AspectMove{
 											 && args(move)
 											 && call(boolean isMoveLegal(Move))
 	{
-		//TODO Bishop
-		return false;
+		// Rook can only move diagonally, cannot move if a piece is between initial and final position
+		int color = piece.getPlayer();
+		if( (isPossibleToMoveColor(color,spotF)) &&
+			(isMoveDiagonal(move)) &&
+			(!isBlockedByPiece("Bishop", move))) {
+			return true;
+		} else {
+			return false;
+		}
 	}
 	
 	
@@ -168,7 +240,13 @@ public aspect AspectMove{
 	 										&& args(move)
 	 										&& call(boolean isMoveLegal(Move))
 	{
-		//TODO Queen
+		int color = piece.getPlayer();
+		if(isPossibleToMoveColor(color,spotF)) {
+			// Queen behaves like a Rook if she moves vertically or horizontally and behave like a Bishop if she moves diagonally
+			if ( ((move.xI == move.xF || move.yI == move.yF) && !isBlockedByPiece("Rook", move)) || (isMoveDiagonal(move) && !isBlockedByPiece("Bishop", move)) ) {
+				return true;
+			}		
+		}
 		return false;
 	}
 	
@@ -180,13 +258,8 @@ public aspect AspectMove{
 	 									   && args(move)
 	 									   && call(boolean isMoveLegal(Move))
 	{
-		// Rook can only move to North, South, East or West, cannot move if a piece is between initial and final position
+		// Rook can only move vertically or horizontally, cannot move if a piece is between initial and final position
 		int color = piece.getPlayer();
-		System.out.println("Rooooooook");
-		System.out.println(isPossibleToMoveColor(color,spotF));
-		System.out.println(move.xI == move.xF || move.yI == move.yF);
-		System.out.println(!isBlockedByPiece("Rook", move));
-		
 		if( (isPossibleToMoveColor(color,spotF)) &&
 			(move.xI == move.xF || move.yI == move.yF) &&
 			(!isBlockedByPiece("Rook", move))) {
